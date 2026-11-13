@@ -74,6 +74,18 @@ assert.ok(Math.abs(last.from - startA) < 0.05);
 assert.ok(last.to - last.from > 2.9 && last.to - last.from < 3.4, 'len3 ' + (last.to - last.from));
 assert.match(await h.textContent('#stages'), /3초3점/);
 await h.screenshot({ path: 'test/shot-question.png' });
+// 길이 정확도: 휴대폰처럼 시간이 0.25초마다 바뀌고 멈춤이 0.15초 늦게 먹혀도, 몇 번 들으면 실제 길이가 ±0.08초 안으로
+await h.evaluate(() => { window.__coarse = true; localStorage.removeItem('sq-lead'); });
+const lens = [];
+for(let i = 0; i < 5; i++){
+  await h.click('#playBtn'); await wait(3900);
+  const L = await h.evaluate(() => { const x = window.__plays[window.__plays.length - 1]; return x.to - x.from; });
+  lens.push(+L.toFixed(3));
+}
+console.log('3초 실제 길이:', lens.join(', '), '· lead', await h.evaluate(() => localStorage.getItem('sq-lead')));
+assert.ok(lens.slice(2).every(v => Math.abs(v - 3) < 0.08), 'accuracy ' + lens);
+assert.match(await h.textContent('#coverMsg'), /실제 \d\.\d\d초/);
+await h.evaluate(() => { window.__coarse = false; });
 await h.click('#revealBtn');
 assert.equal(await h.textContent('#ansT'), 'Dynamite');
 assert.equal(await h.locator('#choices .right').count(), 1);
