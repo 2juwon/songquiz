@@ -61,8 +61,14 @@ const startA = last.from;
 assert.ok(startA >= 200 * .2 && startA <= 200 * .7, 'auto start ' + startA);
 assert.ok(last.to - last.from > 0.9 && last.to - last.from < 1.3, 'len ' + (last.to - last.from));
 assert.match(await h.textContent('#playBtn'), /다시/);
+// 휴대폰처럼 seek가 늦게 반영돼도 진행 막대는 앞으로만
+await h.evaluate(() => { window.__mobileStale = true; window.__bars = []; const b = document.querySelector('#bar'); window.__barT = setInterval(() => window.__bars.push(parseFloat(b.style.width) || 0), 20); });
 await h.click('#moreBtn');
 await wait(4200);
+const bars = await h.evaluate(() => { clearInterval(window.__barT); window.__mobileStale = false; return window.__bars; });
+const during = bars.slice(0, bars.lastIndexOf(100) + 1).filter((v, i, a) => i === 0 || v !== 0 || a[i - 1] === 0);
+for(let i = 1; i < during.length; i++) if(during[i] !== 0) assert.ok(during[i] >= during[i - 1], 'bar went back ' + during.slice(Math.max(0, i - 3), i + 2));
+assert.ok(bars.some(v => v > 40 && v < 70), 'bar fills gradually');
 plays = await h.evaluate(() => window.__plays); last = plays[plays.length - 1];
 assert.ok(Math.abs(last.from - startA) < 0.05);
 assert.ok(last.to - last.from > 2.9 && last.to - last.from < 3.4, 'len3 ' + (last.to - last.from));

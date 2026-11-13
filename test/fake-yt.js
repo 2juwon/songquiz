@@ -11,15 +11,15 @@
       setTimeout(() => opts.events.onReady && opts.events.onReady({ target: this }), 50);
     }
     _set(s){ this.state = s; this.opts.events.onStateChange && this.opts.events.onStateChange({ data: s, target: this }); }
-    _now(){ return this.state === 1 ? this.base + (performance.now() - this.since) / 1000 : this.base; }
+    _now(){ if(this.pending != null) return this.base; return this.state === 1 ? this.base + (performance.now() - this.since) / 1000 : this.base; }
     loadVideoById(o){ this.vid = o.videoId; this.base = o.startSeconds || 0; this.el.textContent = 'video ' + this.vid;
       if(/^BAD/.test(this.vid)){ setTimeout(() => this.opts.events.onError({ data: 150 }), 100); return; }
       this._set(3); setTimeout(() => { this.since = performance.now(); this._set(1); }, 200); }
     cueVideoById(o){ this.vid = o.videoId; this.base = o.startSeconds || 0; this._set(5); }
-    playVideo(){ if(this.state === 1) return; this._set(3); setTimeout(() => { this.since = performance.now(); this._set(1); window.__plays.push({ vid: this.vid, from: this.base, muted: this.muted, at: performance.now() }); }, 120); }
+    playVideo(){ if(this.state === 1) return; this._set(3); setTimeout(() => { this.since = performance.now(); this._set(1); if(this.pending != null){ const t = this.pending; this.pending = null; setTimeout(() => { this.base = t; this.since = performance.now(); }, 300); } window.__plays.push({ vid: this.vid, from: this.base, muted: this.muted, at: performance.now() }); }, 120); }
     pauseVideo(){ if(this.state === 1){ this.base = this._now(); } const last = window.__plays[window.__plays.length - 1]; if(last && last.to == null && this.state === 1) last.to = this.base; this._set(2); }
     stopVideo(){ this.base = 0; this._set(0); }
-    seekTo(t){ this.base = t; if(this.state === 1) this.since = performance.now(); }
+    seekTo(t){ if(window.__mobileStale && this.state !== 1){ this.pending = t; return; } this.base = t; if(this.state === 1) this.since = performance.now(); }
     getCurrentTime(){ return this._now(); }
     getPlayerState(){ return this.state; }
     getDuration(){ return this.vid ? 200 : 0; }
