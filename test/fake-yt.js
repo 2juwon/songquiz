@@ -12,7 +12,7 @@
     }
     _set(s){ this.state = s; this.opts.events.onStateChange && this.opts.events.onStateChange({ data: s, target: this }); }
     _now(){ if(this.pending != null) return this.base; return this.state === 1 ? this.base + (performance.now() - this.since) / 1000 : this.base; }
-    loadVideoById(o){ this.vid = o.videoId; this.base = o.startSeconds || 0; this.el.textContent = 'video ' + this.vid;
+    loadVideoById(o){ (window.__loads = window.__loads || []).push({ vid: o.videoId, at: o.startSeconds }); this.vid = o.videoId; this.base = o.startSeconds || 0; this.el.textContent = 'video ' + this.vid;
       if(/^BAD/.test(this.vid)){ setTimeout(() => this.opts.events.onError({ data: 150 }), 100); return; }
       this._set(3); setTimeout(() => { this.since = performance.now(); this._set(1); }, 200); }
     cueVideoById(o){ this.vid = o.videoId; this.base = o.startSeconds || 0; this._set(5); }

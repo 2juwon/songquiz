@@ -106,6 +106,8 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
 .stage{position:relative;width:100%;aspect-ratio:16/9;max-height:52vh;margin:0 auto;border-radius:18px;overflow:hidden;background:#17142A;transition:aspect-ratio .3s}
 .stage .yt{position:absolute;inset:0}
 .stage .yt iframe{width:100%;height:100%;border:0}
+.stage .yt.back{opacity:0;pointer-events:none;z-index:0}
+.stage .yt:not(.back){z-index:1}
 .cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:radial-gradient(circle at 50% 40%,#3A2B85,#17142A 70%);color:#fff;z-index:2;transition:opacity .35s}
 .stage.revealed .cover{opacity:0;pointer-events:none}
 .disc{width:min(44%,190px);aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#1d1a2b 0 3px,#2a2640 3px 5px);box-shadow:0 0 0 6px rgba(255,255,255,.06),0 10px 30px rgba(0,0,0,.5);position:relative;display:grid;place-items:center}
@@ -277,7 +279,7 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
   <button id="peekShow" class="btn sm ghost hidden" style="display:block;margin:4px auto">🔒 출제자 정답 보기</button>
   <div id="stages" class="stages"></div>
   <div id="stage" class="stage">
-    <div id="ytBox" class="yt"><div id="ytPlayer"></div></div>
+    <div id="ytA" class="yt"><div id="ytPlayer"></div></div><div id="ytB" class="yt back"><div id="ytPlayer2"></div></div>
     <div class="cover"><div id="disc" class="disc"></div><div id="coverMsg" class="msg"></div></div>
     <div id="bar" class="bar"></div>
   </div>
@@ -527,7 +529,8 @@ class Clip {
       this.waiters.push(w);
     });
   }
-  // 영상을 불러와 소리 없이 잠깐 틀어 버퍼를 채운 뒤 시작 지점에 세워 둠
+  // 영상을 불러와 소리 없이 잠깐 틀어 버퍼를 채운 뒤 시작 지점에 세워 둠.
+  // 시작 지점을 먼저 정하고 그 자리부터 불러와서(곡 길이를 모르면 3분 30초로 짐작) 버퍼를 두 번 채우지 않게 함
   async load(song, randomStart, maxLen){
     const tok = ++this.token;
     this.loaded = null;
@@ -535,25 +538,38 @@ class Clip {
     if(tok !== this.token) return { cancelled: true };
     this.err = null;
     p.mute();
-    const first = song.start != null && !randomStart ? song.start : 0;
-    p.loadVideoById({ videoId: song.vid, startSeconds: first });
-    const r = await this.wait((k, v) => k === 'error' ? { error: v } : (v === 1 ? { ok: true } : undefined), 45000);
+    const auto = song.start == null || randomStart;
+    const known = Clip.durs[song.vid];
+    let start = auto ? Clip.pick(known || 210, maxLen) : song.start;
+    p.loadVideoById({ videoId: song.vid, startSeconds: start });
+    const playing = ms => this.wait((k, v) => k === 'error' ? { error: v } : (v === 1 ? { ok: true } : undefined), ms);
+    const r = await playing(45000);
     if(tok !== this.token) return { cancelled: true };
     try{ p.pauseVideo(); }catch(e){}
     if(r.error != null) return { error: r.error };
     if(r.timeout) return { error: 'timeout' };
     const data = (p.getVideoData && p.getVideoData()) || {};
     const dur = p.getDuration() || 0;
-    let start = first;
-    if(song.start == null || randomStart){
-      const lo = dur * .22, hi = Math.max(lo, Math.min(dur * .68, dur - maxLen - 2));
-      start = dur > 30 ? Math.round((lo + Math.random() * (hi - lo)) * 10) / 10 : 0;
+    if(dur) Clip.durs[song.vid] = dur;
+    // 짐작한 자리가 실제 곡 길이에 안 맞으면(짧은 곡 등) 다시 골라 그 자리도 버퍼를 채움
+    if(auto && !known && dur && (start + maxLen + 2 > dur || start > dur * .75 || start < dur * .15)){
+      start = Clip.pick(dur, maxLen);
+      p.seekTo(start, true); p.playVideo();
+      await playing(8000);
+      if(tok !== this.token) return { cancelled: true };
+      try{ p.pauseVideo(); }catch(e){}
     }
+    await sleep(120);
+    if(tok !== this.token) return { cancelled: true };
     p.seekTo(start, true);
-    await sleep(250);
     try{ p.pauseVideo(); }catch(e){}
     this.loaded = { vid: song.vid, start, dur, title: data.title || '', author: data.author || '' };
     return { ok: true, ...this.loaded };
+  }
+  static pick(dur, maxLen){
+    if(dur <= 30) return 0;
+    const lo = dur * .22, hi = Math.max(lo, Math.min(dur * .68, dur - maxLen - 2));
+    return Math.round((lo + Math.random() * (hi - lo)) * 10) / 10;
   }
   // 시작 지점부터 sec초 재생. onBegin: 실제 소리가 나기 시작할 때, onTick(0~1)
   // 정확도: 유튜브 getCurrentTime은 0.1~0.25초마다(휴대폰은 더 띄엄띄엄) 바뀌고, pauseVideo도 조금 늦게 먹혀요.
@@ -604,6 +620,7 @@ class Clip {
     }
     return { ok: !!begun, measured };
   }
+  static durs = {};
   static lead(){ const v = LS.get('sq-lead'); return typeof v === 'number' && isFinite(v) ? v : 0.08; }
   // 늘 길게 들리면 lead를 늘리고 짧으면 줄임 (한 번에 오차의 절반만, 0~0.4초)
   static learn(err){ if(Math.abs(err) > 1) return; LS.set('sq-lead', Math.round(Math.min(0.4, Math.max(0, Clip.lead() + err * 0.5)) * 1000) / 1000); }
@@ -838,7 +855,23 @@ for(const [id, key] of [['#optShuffle', 'shuffle'], ['#optChoices', 'choices'], 
 
 /* ---------- 게임 (출제자 기기) ---------- */
 let game = null;
-const clip = new Clip('ytPlayer', false);
+const clips = [new Clip('ytPlayer', false), new Clip('ytPlayer2', false)];
+clips[0].box = 'ytA'; clips[1].box = 'ytB';
+let clip = clips[0];
+function useClip(c){
+  if(clip !== c){ clip.pause(); try{ clip.p && clip.p.mute(); }catch(e){} }
+  clip = c;
+  for(const x of clips) $('#' + x.box).classList.toggle('back', x !== clip);
+}
+const stopAll = () => { for(const x of clips) x.stop(); if(game) game.pre = null; };
+// 지금 곡이 준비되면 다음 곡을 다른 플레이어에서 소리 없이 미리 불러 둠
+function preloadNext(){
+  const g = game; if(!g || !g.cur) return;
+  const song = g.queue[g.idx + 1];
+  if(!song || (g.pre && g.pre.song === song)) return;
+  const other = clips.find(x => x !== clip);
+  g.pre = { song, clip: other, p: other.load(song, g.random, g.stages[3]) };
+}
 function checkStart(){
   const list = named();
   if(!list.length){ toast(songs.length ? '정답(제목)이 있는 노래가 없어요' : '노래를 먼저 넣어 주세요'); return null; }
@@ -866,9 +899,13 @@ async function nextQuestion(){
   if(game.idx >= game.queue.length) return endGame();
   const song = game.queue[game.idx];
   const c = game.cur = { song, stage: 0, played: -1, revealed: false, ready: false, choices: game.choices ? makeChoices(song) : null };
+  let job;
+  if(game.pre && game.pre.song === song){ useClip(game.pre.clip); job = game.pre.p; }
+  else { job = clip.load(song, game.random, game.stages[3]); }
+  game.pre = null;
   renderGame();
   pushState();
-  const r = await clip.load(song, game.random, game.stages[3]);
+  const r = await job;
   if(!game || game.cur !== c || r.cancelled) return;
   let why = null;
   if(r.error != null) why = r.error === 'timeout' ? '영상을 불러오지 못했어요' : (YT_ERR[r.error] || '재생할 수 없는 영상이에요');
@@ -884,6 +921,7 @@ async function nextQuestion(){
   }
   c.ready = true; c.start = r.start;
   renderGame();
+  preloadNext();
 }
 async function playStage(){
   const c = game && game.cur; if(!c || !c.ready || c.revealed || c.playing) return;
@@ -1001,10 +1039,10 @@ $('#peekHide').addEventListener('click', () => { game.peek = false; LS.set(game.
 $('#peekShow').addEventListener('click', () => { game.peek = true; LS.set(game.online ? 'sq-peek-on' : 'sq-peek-local', true); renderGame(); });
 $('#quitBtn').addEventListener('click', async () => {
   if(game && game.online){
-    if(await ask('노래를 그만하고 대기실로 갈까요?\n방과 점수는 그대로 남아요.', '그만하기', '계속하기')){ clip.stop(); game = null; pushState(); showLobby(); }
+    if(await ask('노래를 그만하고 대기실로 갈까요?\n방과 점수는 그대로 남아요.', '그만하기', '계속하기')){ stopAll(); game = null; pushState(); showLobby(); }
     return;
   }
-  if(await ask('게임을 그만하고 처음 화면으로 갈까요?', '그만하기', '계속하기')){ clip.stop(); game = null; show('setup'); }
+  if(await ask('게임을 그만하고 처음 화면으로 갈까요?', '그만하기', '계속하기')){ stopAll(); game = null; show('setup'); }
 });
 document.addEventListener('keydown', e => {
   if(!game || !game.cur || $('#game').classList.contains('hidden') || !$('#dialog').classList.contains('hidden')) return;
@@ -1015,7 +1053,7 @@ document.addEventListener('keydown', e => {
   else if(e.key === 'Enter'){ e.preventDefault(); c.revealed ? nextQuestion() : reveal(); }
 });
 function endGame(){
-  clip.stop();
+  stopAll();
   const list = scorers();
   const g = game; g.ended = true;
   pushState();

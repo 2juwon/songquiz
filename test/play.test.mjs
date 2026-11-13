@@ -58,7 +58,9 @@ let plays = await h.evaluate(() => window.__plays);
 let last = plays[plays.length - 1];
 assert.equal(last.vid, 'gdZLi9oWNZg'); assert.equal(last.muted, false);
 const startA = last.from;
-assert.ok(startA >= 200 * .2 && startA <= 200 * .7, 'auto start ' + startA);
+assert.ok(startA >= 200 * .15 && startA <= 200 * .75, 'auto start ' + startA);
+// 처음부터 재생할 자리에서 불러옴 (0초부터 불러오지 않음)
+assert.ok(await h.evaluate(() => window.__loads.filter(x => x.vid === 'gdZLi9oWNZg').every(x => x.at > 20)));
 assert.ok(last.to - last.from > 0.9 && last.to - last.from < 1.3, 'len ' + (last.to - last.from));
 assert.match(await h.textContent('#playBtn'), /다시/);
 // 휴대폰처럼 seek가 늦게 반영돼도 진행 막대는 앞으로만
@@ -165,8 +167,16 @@ await wait(500);
 assert.match(await pl.textContent('#pstatus'), /맞혔어요! \+4점/);
 assert.match(await pl.textContent('#pme'), /4점/);
 await pl.screenshot({ path: 'test/shot-player-reveal.png' });
+const tNext = Date.now();
 await host.click('#nextBtn');
 await host.waitForSelector('#playBtn:not([disabled])', { timeout: 8000 });
+const readyMs = Date.now() - tNext;
+console.log('다음 곡 준비까지', readyMs, 'ms');
+assert.ok(readyMs < 300, 'preloaded next ' + readyMs);
+// 지금 보이는 플레이어가 다음 곡을 들고 있음
+assert.equal(await host.evaluate(() => clip.loaded.vid), 'CCCCCCCCCCC');
+await host.click('#playBtn'); await wait(1600);
+assert.equal(await host.evaluate(() => window.__plays.at(-1).vid), 'CCCCCCCCCCC');
 await wait(300);
 assert.equal(await pl.locator('#buzzBtn:not([disabled])').count(), 1);   // 새 문제면 다시 누를 수 있음
 await host.click('#revealBtn'); await host.click('#nextBtn');
