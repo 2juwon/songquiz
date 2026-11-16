@@ -46,6 +46,7 @@ h1,h2,.jua{font-family:"Jua","Noto Sans KR",sans-serif;font-weight:400}
 .pack:hover{border-color:var(--pri)}
 .pack.hot{border-color:#FFB0CF;background:linear-gradient(135deg,#FFF0F6,#FBFAFF)}
 .pack.hot:hover{border-color:var(--pink)}
+.pack.cat{border-color:#D9CFFF;background:linear-gradient(135deg,#F2EDFF,#FBFAFF)}
 .pack b{display:block;font-size:15px}
 .pack small{color:var(--sub)}
 textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-height:76px;resize:vertical;background:#fff}
@@ -808,38 +809,53 @@ $('#songList').addEventListener('click', async e => {
   if(b.dataset.act === 'del'){ songs = songs.filter(x => x !== s); saveSongs(); renderSongs(); }
   else if(b.dataset.act === 'edit') openEditor(s);
 });
+// 유튜브 재생목록에서 받아오는 카테고리 (재생목록 ID는 서버 server/src/chart.js 에 있어요)
+const CATS = [
+  { cat: 'KR', icon: '🔥', name: '지금 유튜브 인기 음악', sub: '한국 · 6시간마다 새로 받아요', top: true },
+  { cat: 'krtop', icon: '🇰🇷', name: '한국 TOP 100', sub: '유튜브 뮤직 차트 · 매주 바뀌어요', top: true },
+  { cat: 'hits00', icon: '💿', name: '2000년대 히트곡', sub: '유튜브 공식 재생목록' },
+  { cat: 'hits10', icon: '📀', name: '2010년대 히트곡', sub: '유튜브 공식 재생목록' },
+  { cat: 'ost', icon: '🎬', name: '드라마 OST', sub: '유튜브 공식 재생목록' },
+  { cat: 'dance00', icon: '🕺', name: '2000년대 댄스', sub: '유튜브 재생목록' },
+  { cat: 'ballad20', icon: '🎹', name: '2020년대 발라드', sub: '유튜브 재생목록' },
+  { cat: 'hiphop', icon: '🎤', name: '국내 힙합', sub: '유튜브 재생목록' },
+  { cat: 'carol', icon: '🎄', name: '크리스마스 캐롤', sub: '유튜브 재생목록 · 외국 캐롤 위주' },
+];
 function renderPacks(){
-  $('#packs').innerHTML = `<button class="pack hot" data-pack="yt"><b>🔥 지금 유튜브 인기 음악</b><small>한국 · 6시간마다 새로 받아요</small></button>` + PACKS.map(p => `<button class="pack" data-pack="${p.id}"><b>＋ ${esc(p.name)}</b><small>${p.songs.length}곡 · 공식 뮤직비디오</small></button>`).join('');
+  $('#packs').innerHTML = CATS.map(c => `<button class="pack ${c.cat === 'KR' ? 'hot' : 'cat'}" data-cat="${c.cat}"><b>${c.icon} ${esc(c.name)}</b><small>${esc(c.sub)}</small></button>`).join('') + PACKS.map(p => `<button class="pack" data-pack="${p.id}"><b>＋ ${esc(p.name)}</b><small>${p.songs.length}곡 · 공식 뮤직비디오</small></button>`).join('');
 }
 $('#packs').addEventListener('click', e => {
+  const c = e.target.closest('[data-cat]'); if(c) return loadChart(c, CATS.find(x => x.cat === c.dataset.cat));
   const b = e.target.closest('[data-pack]'); if(!b) return;
-  if(b.dataset.pack === 'yt') return loadChart(b);
   const p = PACKS.find(x => x.id === b.dataset.pack);
   const r = addSongs(p.songs.map(([vid, title, artist, chk]) => ({ vid, title, artist, chk })));
   toast(r.added ? `${p.name} ${r.added}곡을 넣었어요${r.dup ? ` (이미 있는 ${r.dup}곡 빼고)` : ''}` : '이미 다 들어 있어요');
 });
-// 유튜브 인기 음악(한국) — 서버가 YouTube Data API로 6시간마다 받아 둔 목록
-async function loadChart(btn){
-  if(!ONLINE_OK){ await choose(`유튜브 인기 음악은 여기서는 못 불러와요.\n\n${PAGE_URL}\n\n위 주소에서 열어 주세요.`, ['확인']); return; }
+// 유튜브 인기 음악·카테고리 — 서버가 YouTube Data API로 받아 둔 목록 (인기 음악 6시간, 카테고리 하루마다 새로)
+async function loadChart(btn, info){
+  if(!ONLINE_OK){ await choose(`유튜브에서 받아오는 목록은 여기서는 못 불러와요.\n\n${PAGE_URL}\n\n위 주소에서 열어 주세요.`, ['확인']); return; }
   const small = btn.querySelector('small'), old = small.textContent;
   small.textContent = '불러오는 중…'; btn.disabled = true;
   try{
     let r;
-    try{ r = await fetch(`${API}/api/chart`); }catch(e){ toast('서버에 연결하지 못했어요. 인터넷을 확인해 주세요'); return; }
+    try{ r = await fetch(`${API}/api/chart${info.cat === 'KR' ? '' : '?cat=' + info.cat}`); }catch(e){ toast('서버에 연결하지 못했어요. 인터넷을 확인해 주세요'); return; }
     const d = await r.json().catch(() => ({}));
     if(!r.ok || !Array.isArray(d.songs) || !d.songs.length){
-      toast(d.error === 'no_key' ? '아직 준비 중이에요 (서버에 유튜브 API 키가 아직 없어요)' : '지금은 유튜브 인기 음악을 불러올 수 없어요. 잠시 뒤 다시 해 주세요');
+      toast(d.error === 'no_key' ? '아직 준비 중이에요 (서버에 유튜브 API 키가 아직 없어요)'
+        : d.error === 'playlist_gone' ? '이 재생목록이 유튜브에서 사라졌어요' : `지금은 ${info.name}을(를) 불러올 수 없어요. 잠시 뒤 다시 해 주세요`);
       return;
     }
     const mins = Math.max(0, Math.round((Date.now() - d.updated) / 60000));
     const ago = mins < 60 ? `${mins}분 전` : `${Math.round(mins / 60)}시간 전`;
     const opts = [20, 50].filter(n => n < d.songs.length);
-    const labels = ['취소', ...opts.map(n => `상위 ${n}곡`), `전부 ${d.songs.length}곡`];
-    const i = await choose(`🔥 유튜브 인기 음악 (한국)\n${ago} 기준 ${d.songs.length}곡이에요.\n\n몇 곡 넣을까요?\n제목·가수는 영상 제목에서 자동으로 추린 거라 한 번 훑어봐 주세요.`, labels);
+    // 차트는 순위대로 위에서부터, 나머지 카테고리는 무작위로 골라요
+    const labels = ['취소', ...opts.map(n => info.top ? `상위 ${n}곡` : `무작위 ${n}곡`), `전부 ${d.songs.length}곡`];
+    const i = await choose(`${info.icon} ${info.name}\n${ago} 기준 ${d.songs.length}곡이에요.\n\n몇 곡 넣을까요?\n제목·가수는 영상 제목에서 자동으로 추린 거라 한 번 훑어봐 주세요.`, labels);
     if(i === 0) return;
     const n = i <= opts.length ? opts[i - 1] : d.songs.length;
-    const res = addSongs(d.songs.slice(0, n).map(x => ({ vid: x.v, title: x.t, artist: x.a })));
-    toast(res.added ? `인기 음악 ${res.added}곡을 넣었어요${res.dup ? ` (이미 있는 ${res.dup}곡 빼고)` : ''}` : '이미 다 들어 있어요');
+    const pick = info.top || n >= d.songs.length ? d.songs.slice(0, n) : shuffle(d.songs).slice(0, n);
+    const res = addSongs(pick.map(x => ({ vid: x.v, title: x.t, artist: x.a })));
+    toast(res.added ? `${info.name} ${res.added}곡을 넣었어요${res.dup ? ` (이미 있는 ${res.dup}곡 빼고)` : ''}` : '이미 다 들어 있어요');
   }finally{ small.textContent = old; btn.disabled = false; }
 }
 $('#addBtn').addEventListener('click', () => {

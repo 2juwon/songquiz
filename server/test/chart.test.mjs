@@ -16,9 +16,25 @@ console.log('guessTitle ok');
 
 // 가짜 유튜브
 const item = (id, title, dur, embeddable = true, ch = 'Label') => ({ id, snippet: { title, channelTitle: ch }, contentDetails: { duration: dur }, status: { embeddable } });
-let calls = 0, lastKey = '';
+let calls = 0, lastKey = '', plCalls = 0;
 const yt = http.createServer((req, res) => {
   const u = new URL(req.url, 'http://x'); calls++; lastKey = u.searchParams.get('key');
+  const send = b => { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(b)); };
+  // 재생목록(드라마 OST 카테고리)
+  if (u.pathname === '/playlistItems') {
+    plCalls++;
+    assert.equal(u.searchParams.get('playlistId'), 'RDCLAK5uy_lOLzp6hkiifnFubcBWM1GgRSnCTKcc_bg');
+    if (u.searchParams.get('pageToken') === 'q2') return send({ items: [{ contentDetails: { videoId: 'OSTOSTOST02' } }, { contentDetails: { videoId: 'GONEGONEGO1' } }] });
+    return send({ nextPageToken: 'q2', items: [{ contentDetails: { videoId: 'OSTOSTOST01' } }, { contentDetails: { videoId: 'LONGLONGLO1' } }] });
+  }
+  if (u.searchParams.get('id')) {
+    assert.deepEqual(u.searchParams.get('id').split(','), ['OSTOSTOST01', 'LONGLONGLO1', 'OSTOSTOST02', 'GONEGONEGO1']);
+    return send({ items: [   // GONE은 지워진 영상이라 안 돌아옴
+      item('OSTOSTOST02', '눈의 꽃', 'PT4M10S', true, 'Park Hyo Shin - Topic'),
+      item('OSTOSTOST01', '[도깨비 OST Part 1] 찬열, 펀치 (CHANYEOL, PUNCH) - Stay With Me MV', 'PT3M30S', true, 'STONE MUSIC'),
+      item('LONGLONGLO1', 'OST 1시간 모음', 'PT1H'),
+    ] });
+  }
   assert.equal(u.pathname, '/videos'); assert.equal(u.searchParams.get('chart'), 'mostPopular');
   assert.equal(u.searchParams.get('regionCode'), 'KR'); assert.equal(u.searchParams.get('videoCategoryId'), '10');
   const p2 = u.searchParams.get('pageToken') === 'p2';
@@ -52,5 +68,17 @@ assert.deepEqual(d.songs.map(s => [s.v, s.t, s.a, s.rank]), [
 assert.equal(lastKey, 'test-key'); assert.equal(calls, 2);
 // 6시간 안에는 다시 안 받음 (저장본)
 await fetch(BASE + '/api/chart'); assert.equal(calls, 2);
+// 카테고리(재생목록): 순서 유지, 지워진/긴 영상 빼기, "- Topic" 채널은 제목 그대로
+const o = await fetch(BASE + '/api/chart?cat=ost');
+assert.equal(o.status, 200, await o.clone().text());
+const od = await o.json();
+assert.equal(od.cat, 'ost');
+assert.deepEqual(od.songs.map(s => [s.v, s.t, s.a]), [
+  ['OSTOSTOST01', 'Stay With Me', '찬열, 펀치 (CHANYEOL, PUNCH)'],
+  ['OSTOSTOST02', '눈의 꽃', 'Park Hyo Shin'],
+]);
+assert.ok(plCalls === 2 || plCalls === 0);   // 처음이면 2번(두 쪽), 저장돼 있으면 0번
+const before = plCalls; await fetch(BASE + '/api/chart?cat=ost'); assert.equal(plCalls, before);  // 하루 안에는 저장본
+assert.equal((await fetch(BASE + '/api/chart?cat=nope')).status, 404);
 yt.close();
 console.log('chart ok');

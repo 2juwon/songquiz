@@ -2,7 +2,7 @@
 // 출제자(host) 휴대폰에서 노래가 나오고, 참가자(player)는 각자 휴대폰으로 문제 상황·'알아요!' 버튼·순위를 봐요.
 // 정답(곡 제목)은 출제자가 정답을 공개할 때만 보내요. 방이 6시간 동안 쓰이지 않으면 모두 지워요.
 
-import { Chart } from './chart.js';
+import { Chart, PLAYLISTS } from './chart.js';
 export { Chart };
 
 const PHASES = ['lobby', 'question', 'reveal', 'end'];
@@ -78,8 +78,11 @@ export default {
 
     // ---- 유튜브 인기 음악(한국) ----
     if (url.pathname === '/api/chart' && req.method === 'GET') {
-      const stub = env.CHART.get(env.CHART.idFromName('KR'));
-      const r = await stub.fetch('https://chart/get');
+      // ?cat=ost 처럼 카테고리를 주면 그 재생목록, 없으면 인기 음악
+      const cat = url.searchParams.get('cat') || 'KR';
+      if (cat !== 'KR' && !PLAYLISTS[cat]) return json({ error: 'unknown_cat' }, 404);
+      const stub = env.CHART.get(env.CHART.idFromName(cat));
+      const r = await stub.fetch('https://chart/get?cat=' + cat);
       return new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300', ...CORS } });
     }
 
