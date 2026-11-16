@@ -189,6 +189,20 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
 .dlg{background:#fff;border-radius:18px;padding:18px;width:min(420px,100%);text-align:center}
 .dlg p{white-space:pre-line;line-height:1.6;margin:0 0 14px}
 .dlg .row{justify-content:center}
+/* 링크로 공유 */
+.iohint{font-size:12.5px;color:var(--sub);margin:8px 0 0}
+.myshares{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:6px}
+.mstitle{font-weight:700;font-size:14px}
+.msrow{display:flex;align-items:center;gap:6px;background:#FBFAFF;border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.msinfo{flex:1;min-width:0}
+.msinfo b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.msinfo small{color:var(--sub)}
+.sharedlg{text-align:left;white-space:normal}
+.sharedlg .sdt{font-family:"Jua";font-size:22px;margin-bottom:6px;text-align:center}
+.sharedlg p{margin:0 0 10px;line-height:1.55}
+.sharedlg .lbl{font-weight:700;font-size:14px;display:block;margin-bottom:4px}
+.sharedlg input{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
+.sharedlg ul{margin:0;padding-left:18px;color:var(--sub);font-size:13px;line-height:1.6}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:rgba(34,30,51,.92);color:#fff;padding:10px 16px;border-radius:12px;opacity:0;transition:.25s;z-index:80;pointer-events:none;max-width:90vw;text-align:center;font-size:14px}
 #toast.on{opacity:1;transform:translateX(-50%)}
 @media (max-width:560px){
@@ -235,13 +249,15 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
     <div class="listbar">
       <span id="songCount"></span>
       <span class="row">
-        <button id="shareBtn" class="btn sm">🔗 목록 공유 링크</button>
+        <button id="shareBtn" class="btn sm">🔗 링크로 공유</button>
         <button id="exportBtn" class="btn sm">내보내기</button>
         <button id="importBtn" class="btn sm">가져오기</button>
         <button id="clearBtn" class="btn sm ghost">모두 지우기</button>
       </span>
     </div>
     <input id="importFile" type="file" accept=".json,application/json" class="hidden">
+    <p class="iohint">링크로 공유하면 다른 PC·휴대폰에서 링크만 열어 이 노래 목록(정답·시작 지점·설정)을 그대로 가져갈 수 있어요.</p>
+    <div id="myShares" class="myshares hidden"></div>
   </div>
 
   <div class="card">
@@ -751,11 +767,80 @@ async function unb64z(s){
 const PAGE_URL = 'https://2juwon.github.io/songquiz/';
 const IS_LOCAL = location.protocol === 'file:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
 const baseUrl = () => (location.protocol === 'file:' || location.origin === 'null' ? PAGE_URL : location.origin + location.pathname);
+/* 링크로 공유 (서버에 30일 보관, 링크를 아는 사람만) */
+const shareUrl = id => baseUrl() + '#q-' + id;
+function myShares(){ const a = LS.get('sq-shares'); return Array.isArray(a) ? a.filter(x => x && x.expires > Date.now()) : []; }
+function renderMyShares(){
+  const list = myShares(), box = $('#myShares');
+  box.classList.toggle('hidden', !list.length);
+  box.innerHTML = list.length ? '<div class="mstitle">내가 공유한 목록</div>' + list.map(x => {
+    const d = new Date(x.expires);
+    return `<div class="msrow"><div class="msinfo"><b>${esc(x.title)}</b><small>${x.count}곡 · ${d.getMonth() + 1}월 ${d.getDate()}일까지</small></div>
+      <button class="btn sm" data-copy="${esc(x.id)}">링크 복사</button><button class="btn sm ghost" data-del="${esc(x.id)}">삭제</button></div>`;
+  }).join('') : '';
+}
+async function copyText(v, okMsg){ try{ await navigator.clipboard.writeText(v); toast(okMsg || '복사했어요'); return true; }catch(e){ return false; } }
+function dlgCustom(node, buttons){
+  return new Promise(res => {
+    const msg = $('#dlgMsg'); msg.innerHTML = ''; msg.appendChild(node);
+    const row = $('#dlgBtns'); row.innerHTML = '';
+    buttons.forEach((bt, i) => {
+      const b = document.createElement('button'); b.className = 'btn' + (bt.primary ? ' primary' : ''); b.textContent = bt.label;
+      if(bt.id) b.id = bt.id;
+      b.onclick = async () => { if(bt.onClick){ const keep = await bt.onClick(); if(keep) return; } $('#dialog').classList.add('hidden'); res(i); };
+      row.appendChild(b);
+    });
+    $('#dialog').classList.remove('hidden');
+  });
+}
+async function showLink(url, title, count){
+  const w = document.createElement('div'); w.className = 'sharedlg';
+  w.innerHTML = `<div class="sdt">링크가 만들어졌어요 🎉</div><p><b>${esc(title)}</b> · ${count}곡</p><input readonly><p class="sub" style="margin:0">카톡 등으로 보내거나 다른 PC에서 열면 이 목록을 그대로 가져갈 수 있어요. 지우기는 '내가 공유한 목록'에서 (이 브라우저에서만).</p>`;
+  const inp = w.querySelector('input'); inp.value = url; inp.addEventListener('focus', () => inp.select());
+  await dlgCustom(w, [{ label: '닫기' }, { label: '링크 복사', primary: true, onClick: async () => { if(!(await copyText(url, '링크를 복사했어요'))){ inp.focus(); toast('링크를 길게 눌러 복사해 주세요'); } return true; } }]);
+}
 $('#shareBtn').addEventListener('click', async () => {
-  const arr = packOut(); if(!arr.length) return toast('공유할 노래가 없어요');
-  const url = baseUrl() + '#s=' + await b64z(JSON.stringify(arr));
-  try{ await navigator.clipboard.writeText(url); toast(`노래 ${arr.length}곡 공유 링크를 복사했어요`); }
-  catch(e){ await choose('아래 링크를 길게 눌러 복사해 주세요\n\n' + url, ['닫기']); }
+  const list = named().filter(s => !s.bad);
+  if(!list.length) return toast(songs.length ? '정답(제목)을 적은 노래가 없어요' : '공유할 노래가 없어요');
+  if(list.length > 300) return toast('한 번에 300곡까지 공유할 수 있어요');
+  const w = document.createElement('div'); w.className = 'sharedlg';
+  w.innerHTML = `<div class="sdt">🔗 링크로 공유</div>
+    <p>정답을 적은 노래 <b>${list.length}곡</b>(제목·가수·시작 지점)과 설정을 올리고 짧은 링크를 만들어요.</p>
+    <label class="lbl">목록 이름</label><input id="shTitle" maxlength="40" placeholder="예) 송년회용 K-pop">
+    <ul><li>목록·검색은 없어요. 링크를 아는 사람만 열 수 있어요.</li><li><b>30일</b> 뒤 자동으로 지워지고, 그 전에 언제든 지울 수 있어요.</li><li>참가자·팀 이름은 올라가지 않아요.</li></ul>`;
+  const ok = await dlgCustom(w, [{ label: '취소' }, { label: '링크 만들기', primary: true }]);
+  if(ok !== 1) return;
+  const title = ($('#shTitle') ? $('#shTitle').value : '').trim() || `노래 ${list.length}곡`;
+  const arr = list.map(s => { const o = { v: s.vid, t: s.title.trim(), a: (s.artist || '').trim() }; if(s.start != null) o.s = s.start; if(s.chk) o.c = s.chk; return o; });
+  const btn = $('#shareBtn'); btn.disabled = true; btn.textContent = '올리는 중…';
+  try{
+    if(!ONLINE_OK) throw new Error('offline');
+    const r = await fetch(`${API}/api/packs`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ app: 'songquiz', v: 1, title, settings: { stages: settings.stages, choices: settings.choices, random: settings.random }, songs: arr }) });
+    if(!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    const all = myShares(); all.unshift({ id: d.id, delKey: d.delKey, title, count: d.count, expires: d.expires });
+    LS.set('sq-shares', all.slice(0, 50)); renderMyShares();
+    await showLink(shareUrl(d.id), title, d.count);
+  }catch(e){
+    // 서버에 못 올리면 목록을 통째로 담은 긴 링크라도 만들어 줌
+    const url = baseUrl() + '#s=' + await b64z(JSON.stringify(arr));
+    toast('서버에 올리지 못해서 긴 링크로 만들었어요');
+    await showLink(url, title, arr.length);
+  }finally{ btn.disabled = false; btn.textContent = '🔗 링크로 공유'; }
+});
+$('#myShares').addEventListener('click', async e => {
+  const c = e.target.closest('[data-copy]'), d = e.target.closest('[data-del]');
+  if(c){ const url = shareUrl(c.dataset.copy); if(!(await copyText(url, '링크를 복사했어요'))) await choose('이 링크를 복사해 주세요:\n\n' + url, ['확인']); }
+  if(d){
+    const x = myShares().find(s => s.id === d.dataset.del); if(!x) return;
+    if(!(await ask(`'${x.title}' 공유를 지울까요?\n이미 가져간 사람 목록은 그대로지만, 링크로는 더 못 가져가요.`, '지우기'))) return;
+    try{
+      const r = await fetch(`${API}/api/packs/${x.id}?key=${encodeURIComponent(x.delKey)}`, { method: 'DELETE' });
+      if(!r.ok && r.status !== 404) throw new Error(r.status);
+      LS.set('sq-shares', myShares().filter(s => s.id !== x.id)); renderMyShares(); toast('공유를 지웠어요');
+    }catch(err){ toast('지우지 못했어요. 잠시 뒤 다시 해 주세요'); }
+  }
 });
 $('#exportBtn').addEventListener('click', () => {
   const arr = packOut(); if(!arr.length) return toast('내보낼 노래가 없어요');
@@ -773,14 +858,22 @@ $('#importFile').addEventListener('change', async e => {
     await takeIn(packIn(d.songs), '파일의');
   }catch(err){ toast('노래 퀴즈 파일이 아니에요'); }
 });
-async function takeIn(list, from){
-  if(!list.length){ toast('들어 있는 노래가 없어요'); return; }
-  let mode = 2;
-  if(songs.length) mode = await choose(`${from} 노래 ${list.length}곡을 넣을까요?\n지금 목록에 ${songs.length}곡이 있어요.`, ['취소', '지우고 바꾸기', '뒤에 추가']);
-  if(mode === 0) return;
+async function takeIn(list, from, head, sets){
+  if(!list.length){ toast('들어 있는 노래가 없어요'); return false; }
+  const top = head ? head + '\n\n' : '';
+  let mode;
+  if(songs.length) mode = await choose(`${top}${from} 노래 ${list.length}곡을 넣을까요?\n지금 목록에 ${songs.length}곡이 있어요.`, ['취소', '지우고 바꾸기', '뒤에 추가']);
+  else mode = head ? ((await choose(`${top}노래 ${list.length}곡을 가져올까요?`, ['취소', '가져오기'])) === 1 ? 2 : 0) : 2;
+  if(mode === 0) return false;
   if(mode === 1) songs = [];
   const r = addSongs(list);
+  if(sets){
+    if(['hard', 'normal', 'easy'].includes(sets.stages)) settings.stages = sets.stages;
+    settings.choices = !!sets.choices; settings.random = !!sets.random;
+    LS.set('sq-settings', settings); renderSettings();
+  }
   toast(`${r.added}곡을 넣었어요`);
+  return true;
 }
 
 /* ---------- 구간 정하기 ---------- */
@@ -1403,6 +1496,21 @@ async function route(){
     if(name && ONLINE_OK) return joinRoom(m[1], name);
     return openJoin(m[1]);
   }
+  m = h.match(/^#q-([a-z0-9]{10})$/);
+  if(m){
+    const clear = () => history.replaceState(null, '', location.pathname + location.search);
+    show('setup');
+    if(!ONLINE_OK){ await choose(`공유 링크는 ${PAGE_URL} 에서 열어 주세요.`, ['확인']); clear(); return; }
+    toast('공유된 노래 목록을 불러오는 중…');
+    let r;
+    try{ r = await fetch(`${API}/api/packs/${m[1]}`); }catch(e){ toast('서버에 연결하지 못했어요. 인터넷을 확인하고 새로고침해 주세요'); return; }
+    if(r.status === 404){ await choose('이 링크는 기한(30일)이 지났거나 만든 사람이 지웠어요.', ['확인']); clear(); return; }
+    if(!r.ok){ toast('불러오지 못했어요. 잠시 뒤 다시 열어 주세요'); return; }
+    const d = await r.json();
+    clear();
+    if(await takeIn(packIn(d.songs), '공유받은', `🔗 공유받은 노래 목록\n'${d.title}' · ${d.songs.length}곡`, d.settings)) window.scrollTo(0, 0);
+    return;
+  }
   m = h.match(/^#s=([A-Za-z0-9_-]+)$/);
   if(m){
     history.replaceState(null, '', location.pathname + location.search);
@@ -1411,6 +1519,8 @@ async function route(){
   }
 }
 route();
+window.addEventListener('hashchange', () => { if(/^#q-|^#s=/.test(location.hash)) route(); });
+renderMyShares();
 </script>
 </body>
 </html>

@@ -110,15 +110,41 @@ assert.match(await h.textContent('#resultSub'), /건너뛴 곡 2/);
 const bad = await h.evaluate(() => JSON.parse(localStorage.getItem('sq-songs')).find(s => s.vid === 'BADBADBAD01').bad);
 assert.equal(bad, true);
 
-// 공유 링크
+// 링크로 공유 → 다른 PC(새 브라우저)에서 열기
 await h.click('#homeBtn');
-const url = await h.evaluate(async () => { let u; navigator.clipboard.writeText = async t => { u = t; }; document.querySelector('#shareBtn').click(); await new Promise(r => setTimeout(r, 300)); return u; });
-assert.match(url, /#s=z/);
+await h.click('#shareBtn');
+await h.fill('#shTitle', '회식용 노래');
+await h.click('#dlgBtns .primary');
+await h.waitForFunction(() => /#q-[a-z0-9]{10}$/.test(document.querySelector('.sharedlg input')?.value || ''));
+const url = await h.inputValue('.sharedlg input');
+await h.click('#dlgBtns .btn:not(.primary)');
+assert.match(await h.textContent('#myShares'), /회식용 노래.*3곡/);
 const h2 = await page();
-await h2.goto(url.replace('https://2juwon.github.io/songquiz/', URL0));
-await wait(500);
+await h2.goto(url.replace(/^.*\/(index\.html)?#/, URL0 + '#'));
+await h2.waitForSelector('#dialog:not(.hidden)');
+assert.match(await h2.textContent('#dlgMsg'), /회식용 노래' · 3곡/);
+await h2.click('#dlgBtns .primary');
+await wait(400);
 assert.equal(await h2.locator('.song').count(), 3);   // 재생 안 되는 곡은 빼고 공유
 assert.equal(await h2.evaluate(() => location.hash), '');
+const got = await h2.evaluate(() => ({ s: JSON.parse(localStorage.getItem('sq-songs')).find(x => x.vid === 'BBBBBBBBBBB'), set: JSON.parse(localStorage.getItem('sq-settings')) }));
+assert.equal(got.s.start, 65); assert.equal(got.s.title, '내 노래'); assert.equal(got.set.choices, true);
+// 만든 쪽에서 지우면 링크가 안 열림
+h.once('dialog', d => d.accept());
+await h.click('#myShares [data-del]');
+await h.click('#dlgBtns .primary');
+await wait(500);
+assert.equal(await h.isVisible('#myShares'), false);
+const h3 = await page();
+await h3.goto(url.replace(/^.*\/(index\.html)?#/, URL0 + '#'));
+await h3.waitForSelector('#dialog:not(.hidden)');
+assert.match(await h3.textContent('#dlgMsg'), /지났거나 만든 사람이 지웠어요/);
+// 예전 긴 링크(#s=)도 계속 열림
+const longUrl = await h.evaluate(async () => baseUrl() + '#s=' + await b64z(JSON.stringify([{ v: 'DDDDDDDDDDD', t: '예전 링크 곡', a: '' }])));
+const h4 = await page();
+await h4.goto(longUrl.replace(/^.*\/(index\.html)?#/, URL0 + '#'));
+await wait(500);
+assert.equal(await h4.locator('.song').count(), 1);
 
 // 구간 편집기
 await h.locator('.song [data-act=edit]').first().click();

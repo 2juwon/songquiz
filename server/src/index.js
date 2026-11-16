@@ -10,7 +10,7 @@ const VID_RE = /^[A-Za-z0-9_-]{11}$/;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', ...CORS } });
@@ -47,10 +47,81 @@ export default {
       return stub.fetch(new Request('https://room/ws' + url.search, req));
     }
 
+    // ---- 노래 목록 공유 링크 ----
+    if (url.pathname === '/api/packs' && req.method === 'POST') {
+      const text = await req.text();
+      if (text.length > PACK_MAX_BODY) return json({ error: 'too_large' }, 413);
+      let d; try { d = JSON.parse(text); } catch (e) { return json({ error: 'bad_json' }, 400); }
+      const pack = cleanPack(d);
+      if (!pack) return json({ error: 'bad_pack' }, 400);
+      const id = rid(10), delKey = rid(20);
+      const stub = env.PACK.get(env.PACK.idFromName(id));
+      const r = await stub.fetch('https://pack/put', { method: 'POST', body: JSON.stringify({ ...pack, delKey }) });
+      if (!r.ok) return json({ error: 'save_failed' }, 500);
+      const meta = await r.json();
+      return json({ id, delKey, expires: meta.expires, count: pack.songs.length });
+    }
+    m = url.pathname.match(/^\/api\/packs\/([a-z0-9]{10})$/);
+    if (m) {
+      const stub = env.PACK.get(env.PACK.idFromName(m[1]));
+      if (req.method === 'GET') return stub.fetch('https://pack/get');
+      if (req.method === 'DELETE') return stub.fetch('https://pack/del?key=' + encodeURIComponent(url.searchParams.get('key') || ''), { method: 'POST' });
+    }
+
     if (url.pathname === '/' || url.pathname === '/api/health') return json({ ok: true, app: 'songquiz-room' });
     return json({ error: 'not found' }, 404);
   },
 };
+
+// ---- 노래 목록 공유 링크: 링크를 아는 사람만, 30일 뒤 자동 삭제 ----
+const PACK_TTL = 30 * 24 * 60 * 60 * 1000;
+const PACK_MAX_BODY = 200_000;
+const PACK_MAX_SONGS = 300;
+function cleanPack(d) {
+  if (!d || d.app !== 'songquiz' || !Array.isArray(d.songs)) return null;
+  const songs = [], seen = new Set();
+  for (const o of d.songs) {
+    if (!o || typeof o.v !== 'string' || !VID_RE.test(o.v) || seen.has(o.v)) continue;
+    const t = str(o.t, 60); if (!t) continue;
+    seen.add(o.v);
+    const x = { v: o.v, t, a: str(o.a, 40) };
+    if (typeof o.s === 'number' && isFinite(o.s) && o.s >= 0 && o.s < 36000) x.s = Math.round(o.s * 10) / 10;
+    if (Array.isArray(o.c)) x.c = o.c.slice(0, 4).map(k => str(k, 30)).filter(Boolean);
+    songs.push(x);
+  }
+  if (songs.length < 1 || songs.length > PACK_MAX_SONGS) return null;
+  const st = d.settings && typeof d.settings === 'object' ? d.settings : {};
+  const settings = { stages: ['hard', 'normal', 'easy'].includes(st.stages) ? st.stages : 'normal', choices: !!st.choices, random: !!st.random };
+  return { title: str(d.title, 40) || `노래 ${songs.length}곡`, songs, settings };
+}
+
+export class Pack {
+  constructor(ctx, env) { this.ctx = ctx; this.env = env; }
+  async fetch(req) {
+    const url = new URL(req.url), st = this.ctx.storage;
+    const meta = await st.get('meta');
+    const live = meta && Date.now() < meta.expires;
+    if (url.pathname === '/put') {
+      if (meta) return json({ error: 'exists' }, 409);
+      const d = await req.json(), now = Date.now();
+      await st.put({ meta: { title: d.title, settings: d.settings, created: now, expires: now + PACK_TTL, delKey: d.delKey }, songs: d.songs });
+      await st.setAlarm(now + PACK_TTL);
+      return json({ ok: true, expires: now + PACK_TTL });
+    }
+    if (url.pathname === '/get') {
+      if (!live) return json({ error: 'not_found' }, 404);
+      return json({ app: 'songquiz', v: 1, title: meta.title, settings: meta.settings, songs: (await st.get('songs')) || [], created: meta.created, expires: meta.expires });
+    }
+    if (url.pathname === '/del') {
+      if (!meta) return json({ ok: true, gone: true });
+      if (url.searchParams.get('key') !== meta.delKey) return json({ error: 'bad_key' }, 403);
+      await st.deleteAlarm(); await st.deleteAll();
+      return json({ ok: true });
+    }
+    return json({ error: 'not found' }, 404);
+  }
+  async alarm() { await this.ctx.storage.deleteAll(); }
+}
 
 export class Room {
   constructor(ctx, env) {

@@ -4,7 +4,7 @@
   "description": "1초 노래 퀴즈 같이 하기 방 서버",
   "scripts": {
     "dev": "wrangler dev --port 8787 --ip 127.0.0.1",
-    "test": "node test/room.test.mjs",
+    "test": "node test/room.test.mjs && node test/pack.test.mjs",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
