@@ -285,7 +285,7 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
   <div class="setup-grid"><div class="col-main">
   <div class="card">
     <div class="step"><b>1</b>노래 넣기</div>
-    <p class="sub">기본 곡 묶음을 고르거나, 유튜브 링크를 붙여 넣으세요. 노래는 유튜브 공식 플레이어로 나와요.</p>
+    <p class="sub">카테고리를 고르거나, 유튜브 링크를 붙여 넣으세요. 노래는 유튜브 공식 플레이어로 나와요.</p>
     <div id="packs" class="packs"></div>
     <div class="addrow">
       <textarea id="linkInput" placeholder="유튜브 링크를 붙여 넣으세요 (여러 곡은 줄마다 하나씩)&#10;링크 | 제목 | 가수 | 1:05 처럼 적으면 정답·시작 지점까지 한 번에 들어가요"></textarea>
@@ -446,83 +446,6 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
 
 <script>
 'use strict';
-/* ---------- 기본 곡 묶음 ----------
-   유튜브 공식 뮤직비디오. chk = 영상 제목에 들어 있어야 하는 말(다른 영상으로 바뀌었으면 건너뜀) */
-const PACKS = [
-  { id: 'k20', name: '2020년대 K-pop', songs: [
-    ['gdZLi9oWNZg', 'Dynamite', 'BTS', ['dynamite']],
-    ['WMweEpGlu_U', 'Butter', 'BTS', ['butter']],
-    ['ioNng23DkIM', 'How You Like That', 'BLACKPINK', ['how you like that']],
-    ['gQlMMD8auMs', 'Pink Venom', 'BLACKPINK', ['pink venom']],
-    ['4TWR90KJl84', 'Next Level', 'aespa', ['next level']],
-    ['Y8JFxS1HlDo', 'LOVE DIVE', 'IVE', ['love dive']],
-    ['6ZUIwj3FgUY', 'I AM', 'IVE', ['i am']],
-    ['11cta61wi0g', 'Hype Boy', 'NewJeans', ['hype boy']],
-    ['ekr2nIex040', 'APT.', '로제 & 브루노 마스', ['apt']],
-    ['7HDeem-JaSY', '퀸카 (Queencard)', '(여자)아이들', ['queencard', '퀸카']],
-    ['pyf8cbqyfPs', 'ANTIFRAGILE', 'LE SSERAFIM', ['antifragile']],
-    ['0-q1KafFCLU', 'Celebrity', '아이유', ['celebrity']],
-  ]},
-  { id: 'k10', name: '2010년대 K-pop', songs: [
-    ['9bZkp7q19f0', '강남스타일', '싸이', ['gangnam', '강남']],
-    ['U7mPqycQ0tQ', 'Gee', '소녀시대', ['gee']],
-    ['6SwiSpudKWI', '소원을 말해봐 (Genie)', '소녀시대', ['genie', '소원']],
-    ['j7_lSP8Vc3o', '내가 제일 잘 나가', '2NE1', ['i am the best', '내가 제일']],
-    ['jeqdYqsrsA0', '좋은 날', '아이유', ['good day', '좋은 날']],
-    ['I3dezFzsNss', '으르렁 (Growl)', 'EXO', ['growl', '으르렁']],
-    ['2ips2mM7Zqw', 'BANG BANG BANG', 'BIGBANG', ['bang bang bang', '뱅뱅뱅']],
-    ['c7rCyll5AeY', 'CHEER UP', 'TWICE', ['cheer up']],
-    ['ePpPVE-GGJw', 'TT', 'TWICE', ['tt']],
-    ['WyiIGEHQP8o', '빨간 맛 (Red Flavor)', 'Red Velvet', ['red flavor', '빨간 맛', '빨간맛']],
-    ['MBdVXkSdhwU', 'DNA', 'BTS', ['dna']],
-    ['IHNzOHi8sJs', '뚜두뚜두 (DDU-DU DDU-DU)', 'BLACKPINK', ['ddu-du', '뚜두']],
-    ['XsX3ATc3FbA', '작은 것들을 위한 시 (Boy With Luv)', 'BTS', ['boy with luv', '작은 것들']],
-    ['kOHB85vDuow', 'FANCY', 'TWICE', ['fancy']],
-  ]},
-  { id: 'knew', name: 'K-pop 요즘 히트 (2021~2024)', songs: [
-    ['QU9c0053UAU', 'Seven', '정국', ['seven']],
-    ['phuiiNCxRMg', 'Supernova', 'aespa', ['supernova']],
-    ['WPdWvnAAurg', 'Savage', 'aespa', ['savage']],
-    ['Vk5-c_v4gMU', 'Magnetic', 'ILLIT', ['magnetic']],
-    ['ArmDp-zijuc', 'Super Shy', 'NewJeans', ['super shy']],
-    ['--FmExEAsM8', 'ELEVEN', 'IVE', ['eleven']],
-    ['F0B7HDiY-10', 'After LIKE', 'IVE', ['after like']],
-    ['4vbDFu0PUew', 'FEARLESS', 'LE SSERAFIM', ['fearless']],
-    ['CuklIb9d3fI', 'Permission to Dance', 'BTS', ['permission to dance']],
-    ['3ymwOvzhwHs', 'Feel Special', 'TWICE', ['feel special']],
-  ]},
-  { id: 'kleg', name: 'K-pop 레전드 (2009~2018)', songs: [
-    ['x6QA3m58DQw', '쏘리 쏘리 (SORRY, SORRY)', '슈퍼주니어', ['sorry', '쏘리']],
-    ['ASO_zypdnsQ', '젠틀맨 (GENTLEMAN)', '싸이', ['gentleman', '젠틀맨']],
-    ['AAbokV76tkU', 'FANTASTIC BABY', 'BIGBANG', ['fantastic baby']],
-    ['wq7ftOZBy0E', 'I GOT A BOY', '소녀시대', ['i got a boy']],
-    ['0rtV5esQT6I', 'OOH-AHH하게 (Like OOH-AHH)', 'TWICE', ['ooh-ahh', 'ooh ahh']],
-    ['V2hlQkVJZhE', 'LIKEY', 'TWICE', ['likey']],
-    ['ALj5MKjy2BU', '불타오르네 (FIRE)', 'BTS', ['fire', '불타오르네']],
-    ['hmE9f-TEutc', '피 땀 눈물 (Blood Sweat & Tears)', 'BTS', ['blood sweat', '피 땀 눈물']],
-    ['pBuZEGYXA6E', 'IDOL', 'BTS', ['idol']],
-    ['bwmSjveL3Lc', '붐바야 (BOOMBAYAH)', 'BLACKPINK', ['boombayah', '붐바야']],
-    ['pSudEWBAYRE', 'Love Shot', 'EXO', ['love shot']],
-    ['QslJYDX3o8s', 'Russian Roulette', 'Red Velvet', ['russian roulette', '러시안 룰렛']],
-  ]},
-  { id: 'pop', name: '팝송 히트', songs: [
-    ['JGwWNGJdvx8', 'Shape of You', 'Ed Sheeran', ['shape of you']],
-    ['kJQP7kiw5Fk', 'Despacito', 'Luis Fonsi', ['despacito']],
-    ['OPf0YbXqDm0', 'Uptown Funk', 'Mark Ronson ft. Bruno Mars', ['uptown funk']],
-    ['YQHsXMglC9A', 'Hello', 'Adele', ['hello']],
-    ['nfWlot6h_JM', 'Shake It Off', 'Taylor Swift', ['shake it off']],
-    ['PMivT7MJ41M', "That's What I Like", 'Bruno Mars', ['what i like']],
-    ['4NRXx6U8ABQ', 'Blinding Lights', 'The Weeknd', ['blinding lights']],
-    ['TUVcZfQe-Kw', 'Levitating', 'Dua Lipa', ['levitating']],
-    ['09R8_2nJtjg', 'Sugar', 'Maroon 5', ['sugar']],
-    ['fRh_vgS2dFE', 'Sorry', 'Justin Bieber', ['sorry']],
-    ['CevxZvSJLk8', 'Roar', 'Katy Perry', ['roar']],
-    ['ZbZSe6N_BXs', 'Happy', 'Pharrell Williams', ['happy']],
-    ['DyDfgMOUjCI', 'bad guy', 'Billie Eilish', ['bad guy']],
-    ['H5v3kku4y6Q', 'As It Was', 'Harry Styles', ['as it was']],
-  ]},
-];
-
 /* ---------- 공통 ---------- */
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -822,14 +745,10 @@ const CATS = [
   { cat: 'carol', icon: '🎄', name: '크리스마스 캐롤', sub: '유튜브 재생목록 · 외국 캐롤 위주' },
 ];
 function renderPacks(){
-  $('#packs').innerHTML = CATS.map(c => `<button class="pack ${c.cat === 'KR' ? 'hot' : 'cat'}" data-cat="${c.cat}"><b>${c.icon} ${esc(c.name)}</b><small>${esc(c.sub)}</small></button>`).join('') + PACKS.map(p => `<button class="pack" data-pack="${p.id}"><b>＋ ${esc(p.name)}</b><small>${p.songs.length}곡 · 공식 뮤직비디오</small></button>`).join('');
+  $('#packs').innerHTML = CATS.map(c => `<button class="pack ${c.cat === 'KR' ? 'hot' : 'cat'}" data-cat="${c.cat}"><b>${c.icon} ${esc(c.name)}</b><small>${esc(c.sub)}</small></button>`).join('');
 }
 $('#packs').addEventListener('click', e => {
   const c = e.target.closest('[data-cat]'); if(c) return loadChart(c, CATS.find(x => x.cat === c.dataset.cat));
-  const b = e.target.closest('[data-pack]'); if(!b) return;
-  const p = PACKS.find(x => x.id === b.dataset.pack);
-  const r = addSongs(p.songs.map(([vid, title, artist, chk]) => ({ vid, title, artist, chk })));
-  toast(r.added ? `${p.name} ${r.added}곡을 넣었어요${r.dup ? ` (이미 있는 ${r.dup}곡 빼고)` : ''}` : '이미 다 들어 있어요');
 });
 // 유튜브 인기 음악·카테고리 — 서버가 YouTube Data API로 받아 둔 목록 (인기 음악 6시간, 카테고리 하루마다 새로)
 async function loadChart(btn, info){

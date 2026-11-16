@@ -25,7 +25,20 @@ const titles = { gdZLi9oWNZg: "BTS (방탄소년단) 'Dynamite' Official MV", WM
 const h = await page({ viewport: { width: 420, height: 860 } }, titles);
 await h.goto(URL0);
 await h.evaluate(() => localStorage.clear()); await h.reload();
-await h.click('[data-pack=k20]');
+// 곡 12개 넣기 (예전 기본 묶음 '2020년대 K-pop' 내용)
+const K20 = [['gdZLi9oWNZg', 'Dynamite', 'BTS', ['dynamite']],
+    ['WMweEpGlu_U', 'Butter', 'BTS', ['butter']],
+    ['ioNng23DkIM', 'How You Like That', 'BLACKPINK', ['how you like that']],
+    ['gQlMMD8auMs', 'Pink Venom', 'BLACKPINK', ['pink venom']],
+    ['4TWR90KJl84', 'Next Level', 'aespa', ['next level']],
+    ['Y8JFxS1HlDo', 'LOVE DIVE', 'IVE', ['love dive']],
+    ['6ZUIwj3FgUY', 'I AM', 'IVE', ['i am']],
+    ['11cta61wi0g', 'Hype Boy', 'NewJeans', ['hype boy']],
+    ['ekr2nIex040', 'APT.', '로제 & 브루노 마스', ['apt']],
+    ['7HDeem-JaSY', '퀸카 (Queencard)', '(여자)아이들', ['queencard', '퀸카']],
+    ['pyf8cbqyfPs', 'ANTIFRAGILE', 'LE SSERAFIM', ['antifragile']],
+    ['0-q1KafFCLU', 'Celebrity', '아이유', ['celebrity']],];
+await h.evaluate(l => addSongs(l.map(([vid, title, artist, chk]) => ({ vid, title, artist, chk }))), K20);
 assert.equal(await h.locator('.song').count(), 12);
 await h.fill('#linkInput', 'https://youtu.be/AAAAAAAAAAA?t=30\nhttps://www.youtube.com/watch?v=BBBBBBBBBBB | 내 노래 | 우리 | 1:05\nBADBADBAD01 | 안 나오는 곡\n이상한 줄');
 await h.click('#addBtn');
