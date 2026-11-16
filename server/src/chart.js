@@ -4,6 +4,8 @@
 export const CHART_TTL = 6 * 60 * 60 * 1000;          // 인기 음악: 6시간
 export const PLAYLIST_TTL = 24 * 60 * 60 * 1000;      // 카테고리 재생목록: 하루 한 번
 const MAX_SONGS = 100;
+// 제목 추리는 방식을 고치면 올려요 → 저장본을 기다리지 않고 바로 새로 받음
+const PARSE_VER = 2;
 const MAX_PL_SONGS = 200;
 
 // 카테고리 카드 → 유튜브 재생목록 (바꾸거나 더하려면 여기만 고치면 돼요)
@@ -36,14 +38,17 @@ export function guessTitle(raw, channel) {
   s = s.replace(/^\s*(\[[^\]]*\]|【[^】]*】)\s*/g, '');
   // 자동 생성 음원(채널 이름 "가수 - Topic")은 영상 제목이 곧 노래 제목
   const topic = /^(.*?)\s*-\s*Topic$/i.exec(String(channel || '').trim());
-  const q = topic ? null : s.match(/^(.*?)\s*['‘’"“”「『]([^'‘’"“”」』]{1,60})['‘’"“”」』]/);
+  // 따옴표는 앞에 공백이 있을 때만 여는 따옴표, 뒤에 공백·괄호·끝이 올 때만 닫는 따옴표 (Girls' Generation, You’re 같은 건 무시)
+  const q = topic ? null : s.match(/^(.*?)\s['‘’"“”「『](.{1,60}?)['‘’"“”」』](?=\s|$|[(\[])/);
   if (topic) { out.title = s; out.artist = topic[1]; }
   else if (q) { out.title = q[2]; out.artist = q[1]; }
   else {
     const d = s.split(/\s+[-–—|_]\s+/);
-    if (d.length >= 2) { out.artist = d[0]; out.title = d.slice(1).join(' '); } else out.title = s;
+    if (d.length >= 2) { out.artist = d[0]; out.title = d[1]; } else out.title = s;
   }
   const clean = t => t.replace(/\[[^\]]*\]|【[^】]*】/g, '')
+    .replace(/\s+(?:l|::|\|)\s+.*$/i, '')                      // "제목 l 드라마 OST", "제목 :: 드라마 OST"
+    .replace(/\((?:feat|ft|prod)\.?[^)]*\)/ig, '')               // (Feat. 누구) (Prod. 누구)
     .replace(/\((?:[^)]*(?:official|mv|m\/v|video|lyric|audio|performance|ver\.?|visualizer|가사|뮤직|특별))[^)]*\)/ig, '')
     .replace(/\b(official\s*)?(music\s*video|mv|m\/v|lyric\s*video|audio|visualizer)\b/ig, '')
     .replace(/\s{2,}/g, ' ').replace(/[\s\-–|:_]+$/, '').replace(/^[\s\-–|:_]+/, '').trim();
@@ -139,7 +144,7 @@ export class Chart {
       await this.ctx.storage.put('lastError', { error: r.error, at: now });
       return r;
     }
-    const data = { updated: now, songs: r.songs };
+    const data = { updated: now, ver: PARSE_VER, songs: r.songs };
     await this.ctx.storage.put('chart', data);
     await this.ctx.storage.delete('lastError');
     return data;
@@ -149,7 +154,7 @@ export class Chart {
     const cat = url.searchParams.get('cat') || 'KR';
     const ttl = PLAYLISTS[cat] ? PLAYLIST_TTL : CHART_TTL;
     let data = await this.ctx.storage.get('chart');
-    if (url.pathname === '/refresh' || !data || Date.now() - data.updated > ttl) {
+    if (url.pathname === '/refresh' || !data || data.ver !== PARSE_VER || Date.now() - data.updated > ttl) {
       // 너무 자주 부르지 않게: 실패는 10분 동안 다시 안 함
       const last = await this.ctx.storage.get('lastError');
       // 키가 없어서 실패했던 거면, 키가 생긴 뒤엔 기다리지 않고 바로 다시 받음

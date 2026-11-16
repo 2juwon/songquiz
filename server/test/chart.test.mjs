@@ -11,6 +11,13 @@ assert.deepEqual(G('ROSÉ & Bruno Mars - APT. (Official Music Video)'), ['APT.',
 assert.deepEqual(G("BTS (방탄소년단) 'Dynamite' Official MV"), ['Dynamite', 'BTS (방탄소년단)']);
 assert.deepEqual(G('[MV] 우즈 (WOODZ) - Drowning'), ['Drowning', '우즈 (WOODZ)']);
 assert.deepEqual(G('Golden (Official Lyric Video)', 'HUNTR/X - Topic'), ['Golden', 'HUNTR/X']);
+assert.deepEqual(G("Girls' Generation 소녀시대 'Gee' MV"), ['Gee', "Girls' Generation 소녀시대"]);
+assert.deepEqual(G("ILLIT (아일릿) '체포하겠어 (You’re Under Arrest)’ Official MV"), ['체포하겠어 (You’re Under Arrest)', 'ILLIT (아일릿)']);
+assert.deepEqual(G('머무르 - 꿈꾸던 어른이 되었나요? | ChaeA 채아'), ['꿈꾸던 어른이 되었나요?', '머무르']);
+assert.deepEqual(G('[MV] DAVICHI(다비치) - This Love(이 사랑) l Descendants of the Sun 태양의 후예 OST'), ['This Love(이 사랑)', 'DAVICHI(다비치)']);
+assert.deepEqual(G('[M/V] V - Christmas Tree :: 그 해 우리는(Our Beloved Summer) OST Part.5'), ['Christmas Tree', 'V']);
+assert.deepEqual(G('Sick Enough to Die (Feat. Mellow)', 'MC MONG - Topic'), ['Sick Enough to Die', 'MC MONG']);
+assert.deepEqual(G('VVS (Feat. JUSTHIS) (Prod. GroovyRoom)', 'MIRANI - Topic'), ['VVS', 'MIRANI']);
 assert.equal(isoDur('PT3M25S'), 205); assert.equal(isoDur('PT1H2M'), 3720); assert.equal(isoDur('P0D'), 0);
 console.log('guessTitle ok');
 
