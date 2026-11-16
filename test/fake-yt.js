@@ -14,7 +14,7 @@
     _now(){ if(this.pending != null) return this.base; return this.state === 1 ? this.base + (performance.now() - this.since) / 1000 : this.base; }
     loadVideoById(o){ (window.__loads = window.__loads || []).push({ vid: o.videoId, at: o.startSeconds }); this.vid = o.videoId; this.base = o.startSeconds || 0; this.el.textContent = 'video ' + this.vid;
       if(/^BAD/.test(this.vid)){ setTimeout(() => this.opts.events.onError({ data: 150 }), 100); return; }
-      this._set(3); setTimeout(() => { this.since = performance.now(); this._set(1); }, 200); }
+      this._set(3); setTimeout(() => { this.since = performance.now(); this._set(1); }, /^SLOW/.test(this.vid) ? 6500 : 200); }
     cueVideoById(o){ this.vid = o.videoId; this.base = o.startSeconds || 0; this._set(5); }
     playVideo(){ if(this._pz){ clearTimeout(this._pz); this._pz = 0; } if(this.state === 1) return; this._set(3); setTimeout(() => { this.since = performance.now(); this._set(1); if(this.pending != null){ const t = this.pending; this.pending = null; setTimeout(() => { this.base = t; this.since = performance.now(); }, 300); } window.__plays.push({ vid: this.vid, from: this.base, muted: this.muted, at: performance.now() }); }, 120); }
     pauseVideo(now){ if(window.__coarse && this.state === 1 && !now){ if(!this._pz){ this._pz = setTimeout(() => { this._pz = 0; this.pauseVideo(true); }, 150); } return; } if(this.state === 1){ this.base = this._now(); } const last = window.__plays[window.__plays.length - 1]; if(last && last.to == null && this.state === 1) last.to = this.base; this._set(2); }

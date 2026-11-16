@@ -110,6 +110,12 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
 .stage .yt:not(.back){z-index:1}
 .cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:radial-gradient(circle at 50% 40%,#3A2B85,#17142A 70%);color:#fff;z-index:2;transition:opacity .35s}
 .stage.revealed .cover{opacity:0;pointer-events:none}
+/* 광고 건너뛰기 구멍: 준비가 늦으면 오른쪽 아래만 뚫어서 유튜브 '건너뛰기' 버튼을 직접 누를 수 있게 (나머지는 그대로 가림) */
+.stage.adhole .cover{clip-path:polygon(0 0,100% 0,100% 64%,58% 64%,58% 100%,0 100%)}
+.adhint{position:absolute;right:0;bottom:0;width:42%;height:36%;z-index:3;pointer-events:none;border:3px dashed var(--pink);border-radius:0 0 18px 0;display:none}
+.adhint span{position:absolute;left:0;right:0;top:-44px;text-align:center;color:#fff;font-size:12.5px;line-height:1.35;text-shadow:0 1px 3px #000}
+.stage.adhole .adhint{display:block}
+.stage.adhole .cover .msg{position:absolute;left:12px;bottom:12px;width:52%;text-align:left;padding:0}
 .disc{width:min(44%,190px);aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#1d1a2b 0 3px,#2a2640 3px 5px);box-shadow:0 0 0 6px rgba(255,255,255,.06),0 10px 30px rgba(0,0,0,.5);position:relative;display:grid;place-items:center}
 .disc::after{content:"";width:34%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,#fff 0 9%,var(--pink) 10% 100%)}
 .disc.spin{animation:spin 1.6s linear infinite}
@@ -297,6 +303,7 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
   <div id="stage" class="stage">
     <div id="ytA" class="yt"><div id="ytPlayer"></div></div><div id="ytB" class="yt back"><div id="ytPlayer2"></div></div>
     <div class="cover"><div id="disc" class="disc"></div><div id="coverMsg" class="msg"></div></div>
+    <div class="adhint"><span>광고가 보이면 여기서<br>'건너뛰기'를 눌러요 ↘</span></div>
     <div id="bar" class="bar"></div>
   </div>
   <div id="answer" class="answer hidden"><div class="t" id="ansT"></div><div class="a" id="ansA"></div></div>
@@ -992,6 +999,7 @@ async function nextQuestion(){
   if(game.idx >= game.queue.length) return endGame();
   const song = game.queue[game.idx];
   const c = game.cur = { song, stage: 0, played: -1, revealed: false, ready: false, choices: game.choices ? makeChoices(song) : null };
+  setTimeout(() => { if(game && game.cur === c && !c.ready){ c.slow = true; renderGame(); } }, 4000);
   let job;
   if(game.pre && game.pre.song === song){ useClip(game.pre.clip); job = game.pre.p; }
   else { job = clip.load(song, game.random, game.stages[3]); }
@@ -1065,8 +1073,9 @@ function renderGame(){
   $('#stages').innerHTML = st.map((v, i) => `<span class="${c.revealed ? (i === c.stage ? 'on' : '') : i < c.stage ? 'done' : i === c.stage ? 'on' : ''}">${v}초<small>${PTS[i]}점</small></span>`).join('');
   const stage = $('#stage');
   stage.classList.toggle('revealed', c.revealed);
+  stage.classList.toggle('adhole', !c.ready && !!c.slow && !c.revealed);
   $('#disc').classList.toggle('spin', !!c.playing);
-  $('#coverMsg').innerHTML = !c.ready ? '노래 불러오는 중…<br><small>광고가 나오면 조금 걸릴 수 있어요</small>'
+  $('#coverMsg').innerHTML = !c.ready ? (c.slow ? '노래 불러오는 중…<br><small>광고가 나오고 있을 수 있어요</small>' : '노래 불러오는 중…<br><small>광고가 나오면 조금 걸릴 수 있어요</small>')
     : c.playing ? `<span class="big">${st[c.stage]}초</span>` : c.played < 0 ? `준비됐어요! '듣기'를 누르세요` : `알 것 같으면 외쳐 보세요!${c.measured ? `<br><small style="opacity:.6">방금 ${c.measured.sec}초 · 실제 ${c.measured.real.toFixed(2)}초</small>` : ''}`;
   if(!c.playing && !c.revealed){ $('#bar').style.width = '0'; }
   // 버튼
