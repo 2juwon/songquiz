@@ -93,7 +93,9 @@ export class Chart {
     if (url.pathname === '/refresh' || !data || Date.now() - data.updated > CHART_TTL) {
       // 너무 자주 부르지 않게: 실패는 10분 동안 다시 안 함
       const last = await this.ctx.storage.get('lastError');
-      if (url.pathname === '/refresh' || !last || Date.now() - last.at > 10 * 60 * 1000) {
+      // 키가 없어서 실패했던 거면, 키가 생긴 뒤엔 기다리지 않고 바로 다시 받음
+      const retry = !last || Date.now() - last.at > 10 * 60 * 1000 || (last.error === 'no_key' && this.env.YOUTUBE_API_KEY);
+      if (url.pathname === '/refresh' || retry) {
         const r = await this.refresh();
         if (!r.error) data = r;
       }
