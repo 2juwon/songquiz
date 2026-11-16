@@ -211,7 +211,42 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
 .sharedlg ul{margin:0;padding-left:18px;color:var(--sub);font-size:13px;line-height:1.6}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:rgba(34,30,51,.92);color:#fff;padding:10px 16px;border-radius:12px;opacity:0;transition:.25s;z-index:80;pointer-events:none;max-width:90vw;text-align:center;font-size:14px}
 #toast.on{opacity:1;transform:translateX(-50%)}
+/* ---- 넓은 화면(태블릿 가로·PC) ---- */
+@media (min-width:700px){
+  #app{max-width:880px}
+  .packs{grid-template-columns:repeat(3,1fr)}
+}
+@media (min-width:1000px){
+  #app{max-width:1200px;padding:20px 28px 56px}
+  .setup-grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;align-items:start}
+  .col-side{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding-bottom:8px}
+  .col-side .card:first-child{margin-top:14px}
+  .col-side .startbar .btn{width:100%;min-width:0}
+  .game-grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:22px;align-items:start}
+  .g-main .stage{max-height:calc(100vh - 170px)}
+  .g-side{position:sticky;top:12px}
+  .g-side .gbtns{flex-direction:column}
+  .g-side .gbtns .btn{width:100%;min-width:0}
+  .g-side .choices{grid-template-columns:1fr}
+  .g-side .answer{margin-top:4px;text-align:left;background:#fff;border-radius:16px;padding:14px 16px}
+  .g-side .scoremini{justify-content:flex-start}
+  .g-side .hint{text-align:left}
+  .lobby-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+  #join .form,#play,#result{max-width:640px;margin-left:auto;margin-right:auto}
+  #play{display:block}
+}
+@media (min-width:1280px){
+  .songs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .song{grid-template-columns:84px 1fr auto}
+  .song .th{width:84px}
+  .song .f div{flex-direction:column}
+  .song input.a{flex:auto}
+}
 @media (max-width:560px){
+  .packs{grid-template-columns:1fr 1fr;gap:6px}
+  .pack{padding:8px 10px}
+  .pack b{font-size:13.5px;line-height:1.3}
+  .pack small{font-size:11.5px}
   .hero h1{font-size:34px}
   .song{grid-template-columns:72px 1fr auto}
   .song .th{width:72px}
@@ -243,6 +278,7 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
     <span class="row"><button id="resumeBtn" class="btn sm primary">다시 열기</button><button id="resumeDrop" class="btn sm ghost">방 닫기</button></span>
   </div>
 
+  <div class="setup-grid"><div class="col-main">
   <div class="card">
     <div class="step"><b>1</b>노래 넣기</div>
     <p class="sub">기본 곡 묶음을 고르거나, 유튜브 링크를 붙여 넣으세요. 노래는 유튜브 공식 플레이어로 나와요.</p>
@@ -266,6 +302,7 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
     <div id="myShares" class="myshares hidden"></div>
   </div>
 
+  </div><div class="col-side">
   <div class="card">
     <div class="step"><b>2</b>참가자·팀 <span class="opt">혼자 하기(한 화면)용 · 선택</span></div>
     <p class="sub">이름을 넣으면 맞힌 사람에게 점수를 줄 수 있어요. 방에서 할 때는 각자 휴대폰으로 들어와요.</p>
@@ -290,6 +327,7 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
     <button id="joinOpenBtn" class="btn ghost">🙋 참가자예요 (방 번호로 들어가기)</button>
   </div>
   <p class="note">방에서는 출제자 휴대폰에서만 소리가 나요. 참가자는 각자 휴대폰으로 '알아요!'를 누르고 말로 답해요.<br>유튜브 영상이 내려갔거나 퍼가기가 막힌 곡은 저절로 건너뛰어요.</p>
+  </div></div>
 </section>
 
 <section id="game" class="hidden">
@@ -297,6 +335,7 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
     <div><div class="q" id="gq"></div><div class="room" id="groom"></div></div>
     <button id="quitBtn" class="btn sm ghost">그만하기</button>
   </div>
+  <div class="game-grid"><div class="g-main">
   <div id="peek" class="peek hidden"><img id="peekImg" alt=""><div class="who"><small>🔒 출제자만 보여요</small><b id="peekName"></b></div><button id="peekHide" class="btn sm">🙈 숨기기</button></div>
   <button id="peekShow" class="btn sm ghost hidden" style="display:block;margin:4px auto">🔒 출제자 정답 보기</button>
   <div id="stages" class="stages"></div>
@@ -306,6 +345,7 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
     <div class="adhint"><span>광고가 보이면 여기서<br>'건너뛰기'를 눌러요 ↘</span></div>
     <div id="bar" class="bar"></div>
   </div>
+  </div><div class="g-side">
   <div id="answer" class="answer hidden"><div class="t" id="ansT"></div><div class="a" id="ansA"></div></div>
   <div id="choices" class="choices hidden"></div>
   <div class="gbtns" id="qBtns">
@@ -321,9 +361,11 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
   <div id="pick" class="pick hidden"><h3 id="pickTitle"></h3><div id="pickChips" class="chips"></div></div>
   <div id="scoreMini" class="scoremini"></div>
   <p class="hint" id="keyHint">스페이스 = 듣기/더 길게 · R = 다시 듣기 · Enter = 정답 공개/다음 곡</p>
+  </div></div>
 </section>
 
 <section id="lobby" class="hidden">
+  <div class="lobby-grid">
   <div class="card" style="text-align:center">
     <div class="step" style="justify-content:center">📡 같이 하기 대기실</div>
     <p class="sub">참가자는 아래 링크나 QR로 들어오거나, 이 페이지에서 '참가자예요'를 눌러 번호를 넣어요.</p>
@@ -335,6 +377,7 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
   <div class="card">
     <div class="step">참가자 <span class="opt" id="pcount"></span></div>
     <div id="lobbyPlayers" class="chips"></div>
+  </div>
   </div>
   <div class="startbar">
     <button id="roomStart" class="btn primary big">노래 시작</button>
@@ -431,6 +474,48 @@ const PACKS = [
     ['IHNzOHi8sJs', '뚜두뚜두 (DDU-DU DDU-DU)', 'BLACKPINK', ['ddu-du', '뚜두']],
     ['XsX3ATc3FbA', '작은 것들을 위한 시 (Boy With Luv)', 'BTS', ['boy with luv', '작은 것들']],
     ['kOHB85vDuow', 'FANCY', 'TWICE', ['fancy']],
+  ]},
+  { id: 'knew', name: 'K-pop 요즘 히트 (2021~2024)', songs: [
+    ['QU9c0053UAU', 'Seven', '정국', ['seven']],
+    ['phuiiNCxRMg', 'Supernova', 'aespa', ['supernova']],
+    ['WPdWvnAAurg', 'Savage', 'aespa', ['savage']],
+    ['Vk5-c_v4gMU', 'Magnetic', 'ILLIT', ['magnetic']],
+    ['ArmDp-zijuc', 'Super Shy', 'NewJeans', ['super shy']],
+    ['--FmExEAsM8', 'ELEVEN', 'IVE', ['eleven']],
+    ['F0B7HDiY-10', 'After LIKE', 'IVE', ['after like']],
+    ['4vbDFu0PUew', 'FEARLESS', 'LE SSERAFIM', ['fearless']],
+    ['CuklIb9d3fI', 'Permission to Dance', 'BTS', ['permission to dance']],
+    ['3ymwOvzhwHs', 'Feel Special', 'TWICE', ['feel special']],
+  ]},
+  { id: 'kleg', name: 'K-pop 레전드 (2009~2018)', songs: [
+    ['x6QA3m58DQw', '쏘리 쏘리 (SORRY, SORRY)', '슈퍼주니어', ['sorry', '쏘리']],
+    ['ASO_zypdnsQ', '젠틀맨 (GENTLEMAN)', '싸이', ['gentleman', '젠틀맨']],
+    ['AAbokV76tkU', 'FANTASTIC BABY', 'BIGBANG', ['fantastic baby']],
+    ['wq7ftOZBy0E', 'I GOT A BOY', '소녀시대', ['i got a boy']],
+    ['0rtV5esQT6I', 'OOH-AHH하게 (Like OOH-AHH)', 'TWICE', ['ooh-ahh', 'ooh ahh']],
+    ['V2hlQkVJZhE', 'LIKEY', 'TWICE', ['likey']],
+    ['ALj5MKjy2BU', '불타오르네 (FIRE)', 'BTS', ['fire', '불타오르네']],
+    ['hmE9f-TEutc', '피 땀 눈물 (Blood Sweat & Tears)', 'BTS', ['blood sweat', '피 땀 눈물']],
+    ['pBuZEGYXA6E', 'IDOL', 'BTS', ['idol']],
+    ['bwmSjveL3Lc', '붐바야 (BOOMBAYAH)', 'BLACKPINK', ['boombayah', '붐바야']],
+    ['pSudEWBAYRE', 'Love Shot', 'EXO', ['love shot']],
+    ['QslJYDX3o8s', 'Russian Roulette', 'Red Velvet', ['russian roulette', '러시안 룰렛']],
+  ]},
+  { id: 'pop', name: '팝송 히트', songs: [
+    ['JGwWNGJdvx8', 'Shape of You', 'Ed Sheeran', ['shape of you']],
+    ['kJQP7kiw5Fk', 'Despacito', 'Luis Fonsi', ['despacito']],
+    ['OPf0YbXqDm0', 'Uptown Funk', 'Mark Ronson ft. Bruno Mars', ['uptown funk']],
+    ['YQHsXMglC9A', 'Hello', 'Adele', ['hello']],
+    ['nfWlot6h_JM', 'Shake It Off', 'Taylor Swift', ['shake it off']],
+    ['PMivT7MJ41M', "That's What I Like", 'Bruno Mars', ['what i like']],
+    ['4NRXx6U8ABQ', 'Blinding Lights', 'The Weeknd', ['blinding lights']],
+    ['TUVcZfQe-Kw', 'Levitating', 'Dua Lipa', ['levitating']],
+    ['09R8_2nJtjg', 'Sugar', 'Maroon 5', ['sugar']],
+    ['fRh_vgS2dFE', 'Sorry', 'Justin Bieber', ['sorry']],
+    ['CevxZvSJLk8', 'Roar', 'Katy Perry', ['roar']],
+    ['ZbZSe6N_BXs', 'Happy', 'Pharrell Williams', ['happy']],
+    ['DyDfgMOUjCI', 'bad guy', 'Billie Eilish', ['bad guy']],
+    ['H5v3kku4y6Q', 'As It Was', 'Harry Styles', ['as it was']],
   ]},
 ];
 
