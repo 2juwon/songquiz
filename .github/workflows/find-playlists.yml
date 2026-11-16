@@ -1,0 +1,27 @@
+name: 재생목록 찾기
+on:
+  workflow_dispatch:
+    inputs:
+      queries:
+        description: '검색어들 (| 로 구분)'
+        required: false
+        default: ''
+      check:
+        description: '내용 확인할 재생목록 ID (, 로 구분)'
+        required: false
+        default: ''
+jobs:
+  find:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: 찾기
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          CHECK: ${{ inputs.check }}
+          QUERIES: ${{ inputs.queries }}
+        run: |
+          IFS='|' read -ra Q <<< "$QUERIES"
+          node tools/find-playlists.mjs "${Q[@]}"
