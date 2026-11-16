@@ -2,6 +2,9 @@
 // 출제자(host) 휴대폰에서 노래가 나오고, 참가자(player)는 각자 휴대폰으로 문제 상황·'알아요!' 버튼·순위를 봐요.
 // 정답(곡 제목)은 출제자가 정답을 공개할 때만 보내요. 방이 6시간 동안 쓰이지 않으면 모두 지워요.
 
+import { Chart } from './chart.js';
+export { Chart };
+
 const PHASES = ['lobby', 'question', 'reveal', 'end'];
 const TTL = 6 * 60 * 60 * 1000;          // 마지막 사용 뒤 6시간이면 방 정리
 const MAX_PLAYERS = 60;
@@ -18,6 +21,11 @@ const rid = n => { const a = new Uint8Array(n); crypto.getRandomValues(a); retur
 const str = (v, max) => String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, '').trim().slice(0, max);
 
 export default {
+  // 6시간마다 차트 새로 받기 (wrangler.toml [triggers])
+  async scheduled(event, env, ctx) {
+    const stub = env.CHART.get(env.CHART.idFromName('KR'));
+    ctx.waitUntil(stub.fetch('https://chart/refresh'));
+  },
   async fetch(req, env) {
     const url = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
@@ -66,6 +74,13 @@ export default {
       const stub = env.PACK.get(env.PACK.idFromName(m[1]));
       if (req.method === 'GET') return stub.fetch('https://pack/get');
       if (req.method === 'DELETE') return stub.fetch('https://pack/del?key=' + encodeURIComponent(url.searchParams.get('key') || ''), { method: 'POST' });
+    }
+
+    // ---- 유튜브 인기 음악(한국) ----
+    if (url.pathname === '/api/chart' && req.method === 'GET') {
+      const stub = env.CHART.get(env.CHART.idFromName('KR'));
+      const r = await stub.fetch('https://chart/get');
+      return new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300', ...CORS } });
     }
 
     if (url.pathname === '/' || url.pathname === '/api/health') return json({ ok: true, app: 'songquiz-room' });

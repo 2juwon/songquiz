@@ -3,12 +3,13 @@
   "version": "1.0.0",
   "description": "1초 노래 퀴즈 같이 하기 방 서버",
   "scripts": {
-    "dev": "wrangler dev --port 8787 --ip 127.0.0.1",
-    "test": "node test/room.test.mjs && node test/pack.test.mjs",
+    "dev": "wrangler dev --port 8787 --ip 127.0.0.1 --test-scheduled",
+    "test": "node test/room.test.mjs && node test/pack.test.mjs && node test/chart.test.mjs",
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
     "wrangler": "^3.114.17"
   },
-  "private": true
+  "private": true,
+  "type": "module"
 }

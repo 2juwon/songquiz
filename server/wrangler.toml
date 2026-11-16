@@ -10,6 +10,14 @@ class_name = "Room"
 name = "PACK"
 class_name = "Pack"
 
+[[durable_objects.bindings]]
+name = "CHART"
+class_name = "Chart"
+
+# 유튜브 인기 음악 6시간마다 새로 받기
+[triggers]
+crons = ["17 */6 * * *"]
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Room"]
@@ -17,3 +25,7 @@ new_sqlite_classes = ["Room"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["Pack"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["Chart"]

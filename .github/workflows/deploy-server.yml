@@ -16,7 +16,9 @@ jobs:
         env:
           TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          YTKEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: |
+          if [ -n "$YTKEY" ]; then echo "yt=true" >> "$GITHUB_OUTPUT"; else echo "::warning::YOUTUBE_API_KEY 비밀값이 없어서 '유튜브 인기 음악'은 꺼진 채로 배포해요"; echo "yt=false" >> "$GITHUB_OUTPUT"; fi
           if [ -z "$TOKEN" ] || [ -z "$ACCOUNT" ]; then
             echo "::warning::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID 비밀값이 없어서 배포를 건너뜀 (Settings → Secrets and variables → Actions)"
             echo "ok=false" >> "$GITHUB_OUTPUT"
@@ -31,8 +33,20 @@ jobs:
         if: steps.check.outputs.ok == 'true'
         working-directory: server
         run: npm ci
+      - name: Cloudflare에 배포 (유튜브 키 포함)
+        if: steps.check.outputs.ok == 'true' && steps.check.outputs.yt == 'true'
+        uses: cloudflare/wrangler-action@v3
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: server
+          wranglerVersion: '3.114.17'
+          secrets: |
+            YOUTUBE_API_KEY
       - name: Cloudflare에 배포
-        if: steps.check.outputs.ok == 'true'
+        if: steps.check.outputs.ok == 'true' && steps.check.outputs.yt != 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
