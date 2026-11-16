@@ -1,0 +1,12 @@
+name: 카테고리 목록 확인
+on: workflow_dispatch
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 카테고리마다 곡 수와 앞 3곡
+        run: |
+          for c in KR krtop hits00 hits10 ost dance00 ballad20 hiphop carol; do
+            printf "%s: " $c
+            curl -s --max-time 60 "https://songquiz.2juwon.workers.dev/api/chart?cat=$c" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const d=JSON.parse(s);console.log(d.error||d.songs.length+'곡 | '+d.songs.slice(0,4).map(x=>x.t+' / '+x.a).join(' · '))}catch(e){console.log('응답 이상', s.slice(0,80))}})"
+          done
