@@ -111,7 +111,9 @@ textarea:focus,input:focus{outline:2px solid var(--pri);border-color:transparent
 .stage .yt iframe{width:100%;height:100%;border:0}
 .stage .yt.back{opacity:0;pointer-events:none;z-index:0}
 .stage .yt:not(.back){z-index:1}
-.cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:radial-gradient(circle at 50% 40%,#3A2B85,#17142A 70%);color:#fff;z-index:2;transition:opacity .35s}
+.cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:radial-gradient(circle at 50% 40%,#3A2B85,#17142A 70%);color:#fff;z-index:2}
+/* 정답 공개 때만 천천히 걷히고, 다음 곡으로 넘길 때는 바로 덮음 (천천히 덮으면 다음 곡 영상이 잠깐 비침) */
+.stage.revealed .cover{transition:opacity .35s}
 .stage.revealed .cover{opacity:0;pointer-events:none}
 /* 광고 건너뛰기 구멍: 준비가 늦으면 오른쪽 아래만 뚫어서 유튜브 '건너뛰기' 버튼을 직접 누를 수 있게 (나머지는 그대로 가림) */
 .stage{--hw:clamp(118px,26%,176px);--hh:clamp(58px,20%,92px)}

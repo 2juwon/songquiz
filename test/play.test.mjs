@@ -108,6 +108,8 @@ await h.click('#pickChips [data-pid="영희"]');
 assert.match(await h.textContent('#scoreMini'), /영희3/);
 await h.screenshot({ path: 'test/shot-reveal.png' });
 await h.click('#nextBtn');
+// 다음 곡으로 넘기면 표지가 바로 덮여야 함 (서서히 덮이면 다음 곡 영상이 비침)
+assert.equal(await h.evaluate(() => getComputedStyle(document.querySelector('#stage .cover')).opacity), '1');
 // Butter는 영상 제목이 달라서 건너뛰고 '내 노래'(1:05)로
 await h.waitForSelector('#playBtn:not([disabled])', { timeout: 8000 });
 await wait(300);
